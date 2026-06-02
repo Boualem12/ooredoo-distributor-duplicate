@@ -16,7 +16,7 @@ export function getAdminSession() {
     maxAge: 60 * 60 * 8, // 8h
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none",
       secure: true,
       path: "/",
     },
