@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      authorized_participants: {
+        Row: {
+          created_at: string
+          distributeur_actuel: string
+          msisdn: string
+          nom_pdv: string
+          region: string
+          wilaya: string
+        }
+        Insert: {
+          created_at?: string
+          distributeur_actuel: string
+          msisdn: string
+          nom_pdv: string
+          region: string
+          wilaya: string
+        }
+        Update: {
+          created_at?: string
+          distributeur_actuel?: string
+          msisdn?: string
+          nom_pdv?: string
+          region?: string
+          wilaya?: string
+        }
+        Relationships: []
+      }
+      responses: {
+        Row: {
+          choix_1: string
+          choix_2: string
+          choix_3: string
+          choix_4: string
+          created_at: string
+          msisdn: string
+        }
+        Insert: {
+          choix_1: string
+          choix_2: string
+          choix_3: string
+          choix_4: string
+          created_at?: string
+          msisdn: string
+        }
+        Update: {
+          choix_1?: string
+          choix_2?: string
+          choix_3?: string
+          choix_4?: string
+          created_at?: string
+          msisdn?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responses_msisdn_fkey"
+            columns: ["msisdn"]
+            isOneToOne: true
+            referencedRelation: "authorized_participants"
+            referencedColumns: ["msisdn"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
