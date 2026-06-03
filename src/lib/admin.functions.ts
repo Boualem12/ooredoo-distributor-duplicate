@@ -183,12 +183,15 @@ export const adminListResponses = createServerFn({ method: "GET" }).handler(asyn
   await requireAdmin();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const [{ data: responses, error: rErr }, { data: participants, error: pErr }] = await Promise.all([
+  const [{ data: responses, error: rErr }] = await Promise.all([
     supabaseAdmin.from("responses").select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at").order("created_at", { ascending: false }).limit(2000),
-    supabaseAdmin.from("authorized_participants").select("msisdn, nom_pdv, wilaya, region, distributeur_actuel"),
   ]);
-
   if (rErr) throw new Error(rErr.message);
+
+  const msisdns = Array.from(new Set((responses ?? []).map((r) => r.msisdn)));
+  const { data: participants, error: pErr } = msisdns.length
+    ? await supabaseAdmin.from("authorized_participants").select("msisdn, nom_pdv, wilaya, region, distributeur_actuel").in("msisdn", msisdns)
+    : { data: [], error: null as null };
   if (pErr) throw new Error(pErr.message);
 
   const partMap = new Map((participants ?? []).map((p) => [p.msisdn, p]));
