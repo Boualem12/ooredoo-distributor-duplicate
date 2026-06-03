@@ -67,6 +67,7 @@ function AdminLayout() {
         </div>
         <nav className="mx-auto flex max-w-7xl gap-1 px-4 pb-2">
           {navItem("/admin/dashboard", "Tableau de bord", LayoutDashboard)}
+          {navItem("/admin/responses", "Réponses", FileText)}
           {navItem("/admin/import", "Importer MSISDN", Upload)}
         </nav>
       </header>
