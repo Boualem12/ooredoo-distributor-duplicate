@@ -135,7 +135,6 @@ export const adminImport = createServerFn({ method: "POST" })
       if (delErr) throw new Error(delErr.message);
     }
 
-    // chunk upsert
     const chunkSize = 500;
     let inserted = 0;
     for (let i = 0; i < cleaned.length; i += chunkSize) {
@@ -145,6 +144,41 @@ export const adminImport = createServerFn({ method: "POST" })
         .upsert(chunk, { onConflict: "msisdn" });
       if (error) throw new Error(error.message);
       inserted += chunk.length;
+    }
+
+    return { ok: true, inserted };
+  });
+
+export const adminExport = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: responses } = await supabaseAdmin
+    .from("responses")
+    .select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at");
+  const { data: participants } = await supabaseAdmin
+    .from("authorized_participants")
+    .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel");
+
+  const partMap = new Map(participants?.map((p) => [p.msisdn, p]) ?? []);
+  const rows = (responses ?? []).map((r) => {
+    const p = partMap.get(r.msisdn);
+    return {
+      msisdn: r.msisdn,
+      nom_pdv: p?.nom_pdv ?? "",
+      wilaya: p?.wilaya ?? "",
+      region: p?.region ?? "",
+      distributeur_actuel: p?.distributeur_actuel ?? "",
+      choix_1: r.choix_1,
+      choix_2: r.choix_2,
+      choix_3: r.choix_3,
+      choix_4: r.choix_4,
+      date: r.created_at,
+    };
+  });
+  return { rows };
+});
+
 export const adminListResponses = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -185,37 +219,3 @@ export const adminDeleteResponse = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-}
-
-    return { ok: true, inserted };
-  });
-
-export const adminExport = createServerFn({ method: "GET" }).handler(async () => {
-  await requireAdmin();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  const { data: responses } = await supabaseAdmin
-    .from("responses")
-    .select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at");
-  const { data: participants } = await supabaseAdmin
-    .from("authorized_participants")
-    .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel");
-
-  const partMap = new Map(participants?.map((p) => [p.msisdn, p]) ?? []);
-  const rows = (responses ?? []).map((r) => {
-    const p = partMap.get(r.msisdn);
-    return {
-      msisdn: r.msisdn,
-      nom_pdv: p?.nom_pdv ?? "",
-      wilaya: p?.wilaya ?? "",
-      region: p?.region ?? "",
-      distributeur_actuel: p?.distributeur_actuel ?? "",
-      choix_1: r.choix_1,
-      choix_2: r.choix_2,
-      choix_3: r.choix_3,
-      choix_4: r.choix_4,
-      date: r.created_at,
-    };
-  });
-  return { rows };
-});
