@@ -40,12 +40,15 @@ export const adminStats = createServerFn({ method: "GET" }).handler(async () => 
   await requireAdmin();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const [{ count: total }, { count: votes }, { data: responses }, { data: participants }] = await Promise.all([
+  const [{ count: total }, { count: votes }, { data: responses }] = await Promise.all([
     supabaseAdmin.from("authorized_participants").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("responses").select("*", { count: "exact", head: true }),
-    supabaseAdmin.from("responses").select("msisdn, choix_1, choix_2, choix_3, choix_4"),
-    supabaseAdmin.from("authorized_participants").select("msisdn, wilaya, region, distributeur_actuel"),
+    supabaseAdmin.from("responses").select("msisdn, choix_1, choix_2, choix_3, choix_4").limit(5000),
   ]);
+  const msisdns = Array.from(new Set((responses ?? []).map((r) => r.msisdn)));
+  const { data: participants } = msisdns.length
+    ? await supabaseAdmin.from("authorized_participants").select("msisdn, wilaya, region, distributeur_actuel").in("msisdn", msisdns)
+    : { data: [] as Array<{ msisdn: string; wilaya: string; region: string; distributeur_actuel: string }> };
 
   const partByMsisdn = new Map<string, { wilaya: string; region: string; distributeur_actuel: string }>();
   for (const p of participants ?? []) {
@@ -155,10 +158,15 @@ export const adminExport = createServerFn({ method: "GET" }).handler(async () =>
 
   const { data: responses } = await supabaseAdmin
     .from("responses")
-    .select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at");
-  const { data: participants } = await supabaseAdmin
-    .from("authorized_participants")
-    .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel");
+    .select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at")
+    .limit(10000);
+  const msisdns = Array.from(new Set((responses ?? []).map((r) => r.msisdn)));
+  const { data: participants } = msisdns.length
+    ? await supabaseAdmin
+        .from("authorized_participants")
+        .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel")
+        .in("msisdn", msisdns)
+    : { data: [] as Array<{ msisdn: string; nom_pdv: string; wilaya: string; region: string; distributeur_actuel: string }> };
 
   const partMap = new Map(participants?.map((p) => [p.msisdn, p]) ?? []);
   const rows = (responses ?? []).map((r) => {
@@ -183,12 +191,15 @@ export const adminListResponses = createServerFn({ method: "GET" }).handler(asyn
   await requireAdmin();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const [{ data: responses, error: rErr }, { data: participants, error: pErr }] = await Promise.all([
+  const [{ data: responses, error: rErr }] = await Promise.all([
     supabaseAdmin.from("responses").select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at").order("created_at", { ascending: false }).limit(2000),
-    supabaseAdmin.from("authorized_participants").select("msisdn, nom_pdv, wilaya, region, distributeur_actuel"),
   ]);
-
   if (rErr) throw new Error(rErr.message);
+
+  const msisdns = Array.from(new Set((responses ?? []).map((r) => r.msisdn)));
+  const { data: participants, error: pErr } = msisdns.length
+    ? await supabaseAdmin.from("authorized_participants").select("msisdn, nom_pdv, wilaya, region, distributeur_actuel").in("msisdn", msisdns)
+    : { data: [], error: null as null };
   if (pErr) throw new Error(pErr.message);
 
   const partMap = new Map((participants ?? []).map((p) => [p.msisdn, p]));
