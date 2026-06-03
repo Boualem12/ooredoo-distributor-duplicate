@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { adminMe, adminLogout } from "@/lib/admin.functions";
 import { OoredooLogo } from "@/components/OoredooLogo";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, Upload } from "lucide-react";
+import { LogOut, LayoutDashboard, Upload, FileText } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/admin")({
@@ -67,6 +67,7 @@ function AdminLayout() {
         </div>
         <nav className="mx-auto flex max-w-7xl gap-1 px-4 pb-2">
           {navItem("/admin/dashboard", "Tableau de bord", LayoutDashboard)}
+          {navItem("/admin/responses", "Réponses", FileText)}
           {navItem("/admin/import", "Importer MSISDN", Upload)}
         </nav>
       </header>
