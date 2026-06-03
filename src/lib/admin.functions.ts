@@ -158,10 +158,15 @@ export const adminExport = createServerFn({ method: "GET" }).handler(async () =>
 
   const { data: responses } = await supabaseAdmin
     .from("responses")
-    .select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at");
-  const { data: participants } = await supabaseAdmin
-    .from("authorized_participants")
-    .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel");
+    .select("msisdn, choix_1, choix_2, choix_3, choix_4, created_at")
+    .limit(10000);
+  const msisdns = Array.from(new Set((responses ?? []).map((r) => r.msisdn)));
+  const { data: participants } = msisdns.length
+    ? await supabaseAdmin
+        .from("authorized_participants")
+        .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel")
+        .in("msisdn", msisdns)
+    : { data: [] as Array<{ msisdn: string; nom_pdv: string; wilaya: string; region: string; distributeur_actuel: string }> };
 
   const partMap = new Map(participants?.map((p) => [p.msisdn, p]) ?? []);
   const rows = (responses ?? []).map((r) => {
