@@ -84,6 +84,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Classement des distributeurs Ooredoo Algérie par les co-distributeurs." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Ooredoo — Sondage Distributeurs" },
+      { name: "twitter:description", content: "Classement des distributeurs Ooredoo Algérie par les co-distributeurs." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/MWZH5bdV1eZ0UoydX7LCNu0L7os1/social-images/social-1780484877492-ooredoo_favicon.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/MWZH5bdV1eZ0UoydX7LCNu0L7os1/social-images/social-1780484877492-ooredoo_favicon.webp" },
     ],
     links: [
       {
