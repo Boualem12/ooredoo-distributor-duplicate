@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { adminMe, adminLogout } from "@/lib/admin.functions";
 import { OoredooLogo } from "@/components/OoredooLogo";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, Upload } from "lucide-react";
+import { LogOut, LayoutDashboard, Upload, FileText } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/admin")({
