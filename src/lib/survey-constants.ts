@@ -1,4 +1,4 @@
-export const DISTRIBUTEURS = ["TIMECOM", "STI", "LOTUS NET", "STARTECK"] as const;
+export const DISTRIBUTEURS = ["TIMECOM", "STI", "LOTUS NET", "STARTECH"] as const;
 export type Distributeur = (typeof DISTRIBUTEURS)[number];
 
 export function normalizeMsisdn(input: string): string {
