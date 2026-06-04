@@ -46,11 +46,12 @@ function SurveyPage() {
     refetchInterval: 30000,
   });
 
-  const [step, setStep] = useState<"msisdn" | "ranking" | "done">("msisdn");
+  const [step, setStep] = useState<"msisdn" | "ranking" | "done" | "already">("msisdn");
   const [msisdn, setMsisdn] = useState("");
   const [password, setPassword] = useState("");
   const [checking, setChecking] = useState(false);
   const [participant, setParticipant] = useState<Participant | null>(null);
+  const [previousChoices, setPreviousChoices] = useState<string[] | null>(null);
   const [choices, setChoices] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -71,7 +72,11 @@ function SurveyPage() {
       } else if (res.status === "invalid_password") {
         toast.error("Mot de passe incorrect.");
       } else if (res.status === "already_voted") {
-        toast.error("Vous avez déjà effectué votre choix.");
+        if (res.participant) setParticipant(res.participant);
+        if (res.response) {
+          setPreviousChoices([res.response.choix_1, res.response.choix_2, res.response.choix_3, res.response.choix_4]);
+        }
+        setStep("already");
       } else if (res.participant) {
         setParticipant(res.participant);
         setStep("ranking");
@@ -329,6 +334,42 @@ function SurveyPage() {
               </div>
               <h2 className="text-2xl font-bold">Merci pour votre participation.</h2>
               <p className="mt-2 text-muted-foreground">Votre classement a été enregistré avec succès.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === "already" && (
+          <Card className="shadow-[var(--shadow-card)] border-border/60 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
+                <CheckCircle2 className="h-8 w-8 text-success" />
+              </div>
+              <CardTitle className="text-2xl">Votre classement</CardTitle>
+              <CardDescription>
+                Vous avez déjà participé. Voici les choix que vous avez enregistrés.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {participant && (
+                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Info label="MSISDN" value={participant.msisdn} />
+                  <Info label="Nom du PDV" value={participant.nom_pdv} />
+                  <Info label="Wilaya" value={participant.wilaya} />
+                  <Info label="Région" value={participant.region} />
+                </dl>
+              )}
+              {previousChoices && (
+                <ol className="space-y-2 rounded-lg bg-muted p-4">
+                  {previousChoices.map((c, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="font-medium">{c}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </CardContent>
           </Card>
         )}
