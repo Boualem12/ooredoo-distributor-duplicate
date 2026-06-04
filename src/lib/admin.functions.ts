@@ -104,6 +104,7 @@ const rowSchema = z.object({
   wilaya: z.string().min(1),
   region: z.string().min(1),
   distributeur_actuel: z.string().min(1),
+  password: z.string().min(1).max(200),
 });
 
 export const adminImport = createServerFn({ method: "POST" })
@@ -127,6 +128,7 @@ export const adminImport = createServerFn({ method: "POST" })
         wilaya: r.wilaya.trim(),
         region: r.region.trim(),
         distributeur_actuel: r.distributeur_actuel.trim(),
+        password: r.password.trim(),
       }))
       .filter((r) => r.msisdn.length >= 8);
 
