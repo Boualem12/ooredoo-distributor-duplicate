@@ -20,6 +20,7 @@ export type Database = {
           distributeur_actuel: string
           msisdn: string
           nom_pdv: string
+          password: string | null
           region: string
           wilaya: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           distributeur_actuel: string
           msisdn: string
           nom_pdv: string
+          password?: string | null
           region: string
           wilaya: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           distributeur_actuel?: string
           msisdn?: string
           nom_pdv?: string
+          password?: string | null
           region?: string
           wilaya?: string
         }

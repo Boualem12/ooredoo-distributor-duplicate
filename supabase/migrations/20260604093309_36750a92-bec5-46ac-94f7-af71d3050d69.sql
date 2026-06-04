@@ -1,0 +1,1 @@
+ALTER TABLE public.authorized_participants ADD COLUMN IF NOT EXISTS password text;
