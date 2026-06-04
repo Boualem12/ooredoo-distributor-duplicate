@@ -46,11 +46,12 @@ function SurveyPage() {
     refetchInterval: 30000,
   });
 
-  const [step, setStep] = useState<"msisdn" | "ranking" | "done">("msisdn");
+  const [step, setStep] = useState<"msisdn" | "ranking" | "done" | "already">("msisdn");
   const [msisdn, setMsisdn] = useState("");
   const [password, setPassword] = useState("");
   const [checking, setChecking] = useState(false);
   const [participant, setParticipant] = useState<Participant | null>(null);
+  const [previousChoices, setPreviousChoices] = useState<string[] | null>(null);
   const [choices, setChoices] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
