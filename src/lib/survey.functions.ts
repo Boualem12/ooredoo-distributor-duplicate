@@ -36,12 +36,12 @@ export const checkMsisdn = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabaseAdmin
       .from("responses")
-      .select("msisdn")
+      .select("choix_1, choix_2, choix_3, choix_4, created_at")
       .eq("msisdn", msisdn)
       .maybeSingle();
 
     if (existing) {
-      return { status: "already_voted" as const };
+      return { status: "already_voted" as const, participant: safe, response: existing };
     }
 
     return { status: "ok" as const, participant: safe };
