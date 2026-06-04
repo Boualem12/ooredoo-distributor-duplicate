@@ -23,12 +23,17 @@ function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const logoutFn = useServerFn(adminLogout);
+  const queryClient = useQueryClient();
 
   if (pathname === "/admin/login") {
     return <Outlet />;
   }
 
   const handleLogout = async () => {
+    // Stop any in-flight admin queries so refetchInterval doesn't fire
+    // adminStats after logout (which would throw a redirect Response).
+    await queryClient.cancelQueries();
+    queryClient.clear();
     await logoutFn();
     navigate({ to: "/admin/login" });
   };
