@@ -16,7 +16,7 @@ export const Route = createFileRoute("/admin/import")({
   component: ImportPage,
 });
 
-type Row = { msisdn: string; nom_pdv: string; wilaya: string; region: string; distributeur_actuel: string };
+type Row = { msisdn: string; nom_pdv: string; wilaya: string; region: string; distributeur_actuel: string; password: string };
 
 function ImportPage() {
   const importFn = useServerFn(adminImport);
@@ -43,8 +43,9 @@ function ImportPage() {
             wilaya: (r.wilaya || "").toString().trim(),
             region: (r.region || "").toString().trim(),
             distributeur_actuel: (r.distributeur_actuel || r.distributeur || "").toString().trim(),
+            password: (r.password || r.mot_de_passe || r.mdp || "").toString().trim(),
           };
-          if (!row.msisdn || !row.nom_pdv || !row.wilaya || !row.region || !row.distributeur_actuel) {
+          if (!row.msisdn || !row.nom_pdv || !row.wilaya || !row.region || !row.distributeur_actuel || !row.password) {
             if (errs.length < 5) errs.push(`Ligne ${i + 2} : champ manquant`);
             return;
           }
@@ -78,7 +79,7 @@ function ImportPage() {
       <div>
         <h1 className="text-2xl font-bold">Importer la liste des participants autorisés</h1>
         <p className="text-sm text-muted-foreground">
-          Fichier CSV avec les colonnes : <code className="rounded bg-muted px-1">msisdn, nom_pdv, wilaya, region, distributeur_actuel</code>
+          Fichier CSV avec les colonnes : <code className="rounded bg-muted px-1">msisdn, nom_pdv, wilaya, region, distributeur_actuel, password</code>
         </p>
       </div>
 
@@ -138,9 +139,9 @@ function ImportPage() {
         </CardHeader>
         <CardContent>
           <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs">
-{`msisdn,nom_pdv,wilaya,region,distributeur_actuel
-0550123456,PDV Alger Centre,Alger,Centre,TIMECOM
-0661234567,PDV Oran Plaza,Oran,Ouest,STI`}
+{`msisdn,nom_pdv,wilaya,region,distributeur_actuel,password
+0550123456,PDV Alger Centre,Alger,Centre,TIMECOM,monMotDePasse1
+0661234567,PDV Oran Plaza,Oran,Ouest,STI,monMotDePasse2`}
           </pre>
         </CardContent>
       </Card>

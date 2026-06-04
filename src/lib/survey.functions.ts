@@ -2,19 +2,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { DISTRIBUTEURS, normalizeMsisdn } from "./survey-constants";
 
-const msisdnSchema = z.object({
+const loginSchema = z.object({
   msisdn: z.string().min(8).max(20),
+  password: z.string().min(1).max(200),
 });
 
 export const checkMsisdn = createServerFn({ method: "POST" })
-  .inputValidator((input) => msisdnSchema.parse(input))
+  .inputValidator((input) => loginSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const msisdn = normalizeMsisdn(data.msisdn);
 
     const { data: participant, error } = await supabaseAdmin
       .from("authorized_participants")
-      .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel")
+      .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel, password")
       .eq("msisdn", msisdn)
       .maybeSingle();
 
@@ -22,6 +23,16 @@ export const checkMsisdn = createServerFn({ method: "POST" })
     if (!participant) {
       return { status: "not_authorized" as const };
     }
+    if (!participant.password || participant.password !== data.password) {
+      return { status: "invalid_password" as const };
+    }
+    const safe = {
+      msisdn: participant.msisdn,
+      nom_pdv: participant.nom_pdv,
+      wilaya: participant.wilaya,
+      region: participant.region,
+      distributeur_actuel: participant.distributeur_actuel,
+    };
 
     const { data: existing } = await supabaseAdmin
       .from("responses")
@@ -33,7 +44,7 @@ export const checkMsisdn = createServerFn({ method: "POST" })
       return { status: "already_voted" as const };
     }
 
-    return { status: "ok" as const, participant };
+    return { status: "ok" as const, participant: safe };
   });
 
 const submitSchema = z.object({

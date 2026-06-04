@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Phone, CheckCircle2, ShieldCheck, LockKeyhole } from "lucide-react";
+import { Loader2, Phone, CheckCircle2, ShieldCheck, LockKeyhole, KeyRound } from "lucide-react";
 
 import { checkMsisdn, submitResponse, getPublicCounter } from "@/lib/survey.functions";
 import { DISTRIBUTEURS, isValidMsisdn } from "@/lib/survey-constants";
@@ -48,6 +48,7 @@ function SurveyPage() {
 
   const [step, setStep] = useState<"msisdn" | "ranking" | "done">("msisdn");
   const [msisdn, setMsisdn] = useState("");
+  const [password, setPassword] = useState("");
   const [checking, setChecking] = useState(false);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [choices, setChoices] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
@@ -64,12 +65,14 @@ function SurveyPage() {
     }
     setChecking(true);
     try {
-      const res = await checkFn({ data: { msisdn } });
+      const res = await checkFn({ data: { msisdn, password } });
       if (res.status === "not_authorized") {
         toast.error("Votre numéro n'est pas autorisé à participer.");
+      } else if (res.status === "invalid_password") {
+        toast.error("Mot de passe incorrect.");
       } else if (res.status === "already_voted") {
         toast.error("Vous avez déjà effectué votre choix.");
-      } else {
+      } else if (res.participant) {
         setParticipant(res.participant);
         setStep("ranking");
       }
@@ -208,9 +211,26 @@ function SurveyPage() {
                     <p className="text-xs text-destructive">Format invalide — exemple : 0550123456.</p>
                   )}
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Votre mot de passe"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-9 h-12 text-base"
+                      maxLength={100}
+                      required
+                    />
+                  </div>
+                </div>
                 <Button
                   type="submit"
-                  disabled={checking || !isValidMsisdn(msisdn)}
+                  disabled={checking || !isValidMsisdn(msisdn) || !password}
                   className="w-full h-12 text-base font-semibold"
                   style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-elegant)" }}
                 >
