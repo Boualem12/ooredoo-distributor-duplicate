@@ -64,12 +64,14 @@ function SurveyPage() {
     }
     setChecking(true);
     try {
-      const res = await checkFn({ data: { msisdn } });
+      const res = await checkFn({ data: { msisdn, password } });
       if (res.status === "not_authorized") {
         toast.error("Votre numéro n'est pas autorisé à participer.");
+      } else if (res.status === "invalid_password") {
+        toast.error("Mot de passe incorrect.");
       } else if (res.status === "already_voted") {
         toast.error("Vous avez déjà effectué votre choix.");
-      } else {
+      } else if (res.participant) {
         setParticipant(res.participant);
         setStep("ranking");
       }
