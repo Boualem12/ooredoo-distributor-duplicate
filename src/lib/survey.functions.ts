@@ -39,7 +39,7 @@ export const checkMsisdn = createServerFn({ method: "POST" })
       return { status: "already_voted" as const };
     }
 
-    return { status: "ok" as const, participant };
+    return { status: "ok" as const, participant: safe };
   });
 
 const submitSchema = z.object({
