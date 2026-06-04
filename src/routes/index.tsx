@@ -72,7 +72,11 @@ function SurveyPage() {
       } else if (res.status === "invalid_password") {
         toast.error("Mot de passe incorrect.");
       } else if (res.status === "already_voted") {
-        toast.error("Vous avez déjà effectué votre choix.");
+        if (res.participant) setParticipant(res.participant);
+        if (res.response) {
+          setPreviousChoices([res.response.choix_1, res.response.choix_2, res.response.choix_3, res.response.choix_4]);
+        }
+        setStep("already");
       } else if (res.participant) {
         setParticipant(res.participant);
         setStep("ranking");
