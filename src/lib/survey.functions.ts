@@ -26,8 +26,13 @@ export const checkMsisdn = createServerFn({ method: "POST" })
     if (!participant.password || participant.password !== data.password) {
       return { status: "invalid_password" as const };
     }
-    const { password: _pw, ...safe } = participant;
-    void _pw;
+    const safe = {
+      msisdn: participant.msisdn,
+      nom_pdv: participant.nom_pdv,
+      wilaya: participant.wilaya,
+      region: participant.region,
+      distributeur_actuel: participant.distributeur_actuel,
+    };
 
     const { data: existing } = await supabaseAdmin
       .from("responses")
