@@ -242,6 +242,125 @@ function SupervisorPage() {
         </>
       )}
 
+  const allRows = (list.data?.rows as PdvRow[] | undefined) ?? [];
+  const filteredRows = allRows.filter((r) => {
+    const voted = !!r.response;
+    if (filterStatus === "voted" && !voted) return false;
+    if (filterStatus === "pending" && voted) return false;
+    if (!filterText.trim()) return true;
+    const q = filterText.trim().toLowerCase();
+    return (
+      r.nom_pdv.toLowerCase().includes(q) ||
+      r.msisdn.toLowerCase().includes(q) ||
+      r.wilaya.toLowerCase().includes(q) ||
+      r.region.toLowerCase().includes(q) ||
+      r.distributeur_actuel.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="min-h-screen">
+      <Toaster richColors position="top-center" />
+
+      <header className="border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <OoredooLogo />
+          <div className="flex items-center gap-3">
+            {loggedIn ? (
+              <>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  Connecté : <strong>{me.data?.username}</strong>
+                </span>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-3.5 w-3.5" /> Déconnexion
+                </Button>
+              </>
+            ) : (
+              <Link
+                to="/admin/login"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <LockKeyhole className="h-3.5 w-3.5" />
+                Espace Admin
+              </Link>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {!loggedIn && (
+        <>
+          <section className="relative overflow-hidden text-primary-foreground" style={{ background: "var(--gradient-hero)" }}>
+            <div className="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
+              <h1 className="text-3xl sm:text-4xl font-bold leading-tight">Espace Superviseur</h1>
+              <p className="mt-3 max-w-2xl text-primary-foreground/90 text-base sm:text-lg">
+                Connectez-vous pour gérer les votes des PDV qui vous sont assignés.
+              </p>
+              {counter.data && (
+                <div className="mt-6 inline-flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+                  <span className="flex items-center gap-2 text-sm">
+                    <ShieldCheck className="h-4 w-4" />
+                    <strong>{counter.data.votes.toLocaleString("fr-FR")}</strong> participations
+                    <span className="text-primary-foreground/70">sur {counter.data.total.toLocaleString("fr-FR")}</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <main className="mx-auto max-w-md px-4 py-10">
+            <Card className="shadow-[var(--shadow-card)]">
+              <CardHeader>
+                <CardTitle className="text-2xl">Connexion superviseur</CardTitle>
+                <CardDescription>Utilisez votre identifiant et mot de passe.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="user">Identifiant</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="user"
+                        autoComplete="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="pl-9 h-11"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pwd">Mot de passe</Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="pwd"
+                        type="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-9 h-11"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={loading || !username || !password}
+                    className="w-full h-11 font-semibold"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Se connecter
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </main>
+        </>
+      )}
+
       {loggedIn && (
         <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
           <div>
@@ -266,8 +385,39 @@ function SupervisorPage() {
           )}
 
           {list.data && list.data.rows.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {(list.data.rows as PdvRow[]).map((r) => {
+            <>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher (nom, MSISDN, wilaya, région, distributeur…)"
+                    value={filterText}
+                    onChange={(e) => setFilterText(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="voted">Votés</SelectItem>
+                      <SelectItem value="pending">En attente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                {filteredRows.length} résultat{filteredRows.length > 1 ? "s" : ""} sur {allRows.length}
+              </div>
+
+              {filteredRows.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredRows.map((r) => {
                 const voted = !!r.response;
                 return (
                   <Card key={r.msisdn} className="shadow-sm">
