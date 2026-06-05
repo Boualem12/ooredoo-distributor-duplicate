@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Ooredoo — Espace Superviseur" },
-      { name: "description", content: "Connexion superviseur pour gérer les votes des PDV Ooredoo." },
+      { name: "description", content: "Connexion superviseur pour gérer les votes des COD Ooredoo." },
     ],
   }),
   component: SupervisorPage,
