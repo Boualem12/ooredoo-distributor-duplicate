@@ -105,6 +105,8 @@ const rowSchema = z.object({
   region: z.string().min(1),
   distributeur_actuel: z.string().min(1),
   password: z.string().min(1).max(200),
+  supervisor_username: z.string().min(1).max(100),
+  supervisor_password: z.string().min(1).max(200),
 });
 
 export const adminImport = createServerFn({ method: "POST" })
@@ -129,8 +131,21 @@ export const adminImport = createServerFn({ method: "POST" })
         region: r.region.trim(),
         distributeur_actuel: r.distributeur_actuel.trim(),
         password: r.password.trim(),
+        supervisor_username: r.supervisor_username.trim().toLowerCase(),
+        supervisor_password: r.supervisor_password.trim(),
       }))
-      .filter((r) => r.msisdn.length >= 8);
+      .filter((r) => r.msisdn.length >= 8 && r.supervisor_username.length > 0);
+
+    // Upsert supervisors first so the FK on authorized_participants is satisfied.
+    const supMap = new Map<string, string>();
+    for (const r of cleaned) supMap.set(r.supervisor_username, r.supervisor_password);
+    const supRows = Array.from(supMap.entries()).map(([username, password]) => ({ username, password }));
+    if (supRows.length) {
+      const { error: supErr } = await supabaseAdmin
+        .from("supervisors")
+        .upsert(supRows, { onConflict: "username" });
+      if (supErr) throw new Error(supErr.message);
+    }
 
     if (data.replace) {
       const { error: delErr } = await supabaseAdmin
@@ -143,7 +158,15 @@ export const adminImport = createServerFn({ method: "POST" })
     const chunkSize = 500;
     let inserted = 0;
     for (let i = 0; i < cleaned.length; i += chunkSize) {
-      const chunk = cleaned.slice(i, i + chunkSize);
+      const chunk = cleaned.slice(i, i + chunkSize).map((r) => ({
+        msisdn: r.msisdn,
+        nom_pdv: r.nom_pdv,
+        wilaya: r.wilaya,
+        region: r.region,
+        distributeur_actuel: r.distributeur_actuel,
+        password: r.password,
+        supervisor_username: r.supervisor_username,
+      }));
       const { error } = await supabaseAdmin
         .from("authorized_participants")
         .upsert(chunk, { onConflict: "msisdn" });
