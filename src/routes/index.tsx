@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, User, KeyRound, LockKeyhole, LogOut, CheckCircle2, Vote, ShieldCheck } from "lucide-react";
+import { Loader2, User, KeyRound, LockKeyhole, LogOut, CheckCircle2, Vote, ShieldCheck, Search, Filter } from "lucide-react";
 
 import {
   supervisorLogin,
