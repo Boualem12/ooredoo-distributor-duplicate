@@ -139,109 +139,6 @@ function SupervisorPage() {
 
   const loggedIn = !!me.data?.username;
 
-  return (
-    <div className="min-h-screen">
-      <Toaster richColors position="top-center" />
-
-      <header className="border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <OoredooLogo />
-          <div className="flex items-center gap-3">
-            {loggedIn ? (
-              <>
-                <span className="text-xs text-muted-foreground hidden sm:inline">
-                  Connecté : <strong>{me.data?.username}</strong>
-                </span>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-3.5 w-3.5" /> Déconnexion
-                </Button>
-              </>
-            ) : (
-              <Link
-                to="/admin/login"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-              >
-                <LockKeyhole className="h-3.5 w-3.5" />
-                Espace Admin
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {!loggedIn && (
-        <>
-          <section className="relative overflow-hidden text-primary-foreground" style={{ background: "var(--gradient-hero)" }}>
-            <div className="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
-              <h1 className="text-3xl sm:text-4xl font-bold leading-tight">Espace Superviseur</h1>
-              <p className="mt-3 max-w-2xl text-primary-foreground/90 text-base sm:text-lg">
-                Connectez-vous pour gérer les votes des PDV qui vous sont assignés.
-              </p>
-              {counter.data && (
-                <div className="mt-6 inline-flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
-                  <span className="flex items-center gap-2 text-sm">
-                    <ShieldCheck className="h-4 w-4" />
-                    <strong>{counter.data.votes.toLocaleString("fr-FR")}</strong> participations
-                    <span className="text-primary-foreground/70">sur {counter.data.total.toLocaleString("fr-FR")}</span>
-                  </span>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <main className="mx-auto max-w-md px-4 py-10">
-            <Card className="shadow-[var(--shadow-card)]">
-              <CardHeader>
-                <CardTitle className="text-2xl">Connexion superviseur</CardTitle>
-                <CardDescription>Utilisez votre identifiant et mot de passe.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="user">Identifiant</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="user"
-                        autoComplete="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="pl-9 h-11"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pwd">Mot de passe</Label>
-                    <div className="relative">
-                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="pwd"
-                        type="password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-9 h-11"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={loading || !username || !password}
-                    className="w-full h-11 font-semibold"
-                    style={{ background: "var(--gradient-hero)" }}
-                  >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Se connecter
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </main>
-        </>
-      )}
-
   const allRows = (list.data?.rows as PdvRow[] | undefined) ?? [];
   const filteredRows = allRows.filter((r) => {
     const voted = !!r.response;
@@ -418,56 +315,64 @@ function SupervisorPage() {
               {filteredRows.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredRows.map((r) => {
-                const voted = !!r.response;
-                return (
-                  <Card key={r.msisdn} className="shadow-sm">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base leading-tight">{r.nom_pdv}</CardTitle>
-                        {voted ? (
-                          <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                            <CheckCircle2 className="mr-1 h-3 w-3" /> Voté
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">En attente</Badge>
-                        )}
-                      </div>
-                      <CardDescription className="font-mono text-xs">{r.msisdn}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="text-muted-foreground">
-                        {r.wilaya} · {r.region}
-                      </div>
-                      <div className="text-xs">
-                        Distributeur actuel : <strong>{r.distributeur_actuel}</strong>
-                      </div>
-                      {voted && r.response && (
-                        <ol className="mt-2 space-y-1 rounded-md bg-muted p-2 text-xs">
-                          {[r.response.choix_1, r.response.choix_2, r.response.choix_3, r.response.choix_4].map((c, i) => (
-                            <li key={i} className="flex items-center gap-2">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                                {i + 1}
-                              </span>
-                              {c}
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                      {!voted && (
-                        <Button
-                          onClick={() => openVote(r)}
-                          size="sm"
-                          className="w-full mt-2"
-                          style={{ background: "var(--gradient-hero)" }}
-                        >
-                          <Vote className="mr-2 h-3.5 w-3.5" /> Voter
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                    const voted = !!r.response;
+                    return (
+                      <Card key={r.msisdn} className="shadow-sm">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base leading-tight">{r.nom_pdv}</CardTitle>
+                            {voted ? (
+                              <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                                <CheckCircle2 className="mr-1 h-3 w-3" /> Voté
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">En attente</Badge>
+                            )}
+                          </div>
+                          <CardDescription className="font-mono text-xs">{r.msisdn}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          <div className="text-muted-foreground">
+                            {r.wilaya} · {r.region}
+                          </div>
+                          <div className="text-xs">
+                            Distributeur actuel : <strong>{r.distributeur_actuel}</strong>
+                          </div>
+                          {voted && r.response && (
+                            <ol className="mt-2 space-y-1 rounded-md bg-muted p-2 text-xs">
+                              {[r.response.choix_1, r.response.choix_2, r.response.choix_3, r.response.choix_4].map((c, i) => (
+                                <li key={i} className="flex items-center gap-2">
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                    {i + 1}
+                                  </span>
+                                  {c}
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                          {!voted && (
+                            <Button
+                              onClick={() => openVote(r)}
+                              size="sm"
+                              className="w-full mt-2"
+                              style={{ background: "var(--gradient-hero)" }}
+                            >
+                              <Vote className="mr-2 h-3.5 w-3.5" /> Voter
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-10 text-center text-muted-foreground">
+                    Aucun résultat ne correspond aux filtres sélectionnés.
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </main>
       )}
