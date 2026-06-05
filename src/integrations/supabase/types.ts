@@ -22,6 +22,7 @@ export type Database = {
           nom_pdv: string
           password: string | null
           region: string
+          supervisor_username: string | null
           wilaya: string
         }
         Insert: {
@@ -31,6 +32,7 @@ export type Database = {
           nom_pdv: string
           password?: string | null
           region: string
+          supervisor_username?: string | null
           wilaya: string
         }
         Update: {
@@ -40,9 +42,18 @@ export type Database = {
           nom_pdv?: string
           password?: string | null
           region?: string
+          supervisor_username?: string | null
           wilaya?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "authorized_participants_supervisor_username_fkey"
+            columns: ["supervisor_username"]
+            isOneToOne: false
+            referencedRelation: "supervisors"
+            referencedColumns: ["username"]
+          },
+        ]
       }
       responses: {
         Row: {
@@ -78,6 +89,27 @@ export type Database = {
             referencedColumns: ["msisdn"]
           },
         ]
+      }
+      supervisors: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          password: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          password: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          password?: string
+          username?: string
+        }
+        Relationships: []
       }
     }
     Views: {
