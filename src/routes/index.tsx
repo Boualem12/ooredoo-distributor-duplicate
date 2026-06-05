@@ -191,7 +191,7 @@ function SupervisorPage() {
             <div className="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
               <h1 className="text-3xl sm:text-4xl font-bold leading-tight">Espace Superviseur</h1>
               <p className="mt-3 max-w-2xl text-primary-foreground/90 text-base sm:text-lg">
-                Connectez-vous pour gérer les votes des PDV qui vous sont assignés.
+                Connectez-vous pour gérer les votes des COD qui vous sont assignés.
               </p>
               {counter.data && (
                 <div className="mt-6 inline-flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
