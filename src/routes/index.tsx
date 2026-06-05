@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, User, KeyRound, LockKeyhole, LogOut, CheckCircle2, Vote, ShieldCheck } from "lucide-react";
+import { Loader2, User, KeyRound, LockKeyhole, LogOut, CheckCircle2, Vote, ShieldCheck, Search, Filter } from "lucide-react";
 
 import {
   supervisorLogin,
@@ -74,6 +74,9 @@ function SupervisorPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [filterText, setFilterText] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "voted" | "pending">("all");
+
   const [active, setActive] = useState<PdvRow | null>(null);
   const [choices, setChoices] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
   const [submitting, setSubmitting] = useState(false);
@@ -135,6 +138,22 @@ function SupervisorPage() {
   };
 
   const loggedIn = !!me.data?.username;
+
+  const allRows = (list.data?.rows as PdvRow[] | undefined) ?? [];
+  const filteredRows = allRows.filter((r) => {
+    const voted = !!r.response;
+    if (filterStatus === "voted" && !voted) return false;
+    if (filterStatus === "pending" && voted) return false;
+    if (!filterText.trim()) return true;
+    const q = filterText.trim().toLowerCase();
+    return (
+      r.nom_pdv.toLowerCase().includes(q) ||
+      r.msisdn.toLowerCase().includes(q) ||
+      r.wilaya.toLowerCase().includes(q) ||
+      r.region.toLowerCase().includes(q) ||
+      r.distributeur_actuel.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="min-h-screen">
@@ -263,58 +282,97 @@ function SupervisorPage() {
           )}
 
           {list.data && list.data.rows.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {(list.data.rows as PdvRow[]).map((r) => {
-                const voted = !!r.response;
-                return (
-                  <Card key={r.msisdn} className="shadow-sm">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base leading-tight">{r.nom_pdv}</CardTitle>
-                        {voted ? (
-                          <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                            <CheckCircle2 className="mr-1 h-3 w-3" /> Voté
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">En attente</Badge>
-                        )}
-                      </div>
-                      <CardDescription className="font-mono text-xs">{r.msisdn}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="text-muted-foreground">
-                        {r.wilaya} · {r.region}
-                      </div>
-                      <div className="text-xs">
-                        Distributeur actuel : <strong>{r.distributeur_actuel}</strong>
-                      </div>
-                      {voted && r.response && (
-                        <ol className="mt-2 space-y-1 rounded-md bg-muted p-2 text-xs">
-                          {[r.response.choix_1, r.response.choix_2, r.response.choix_3, r.response.choix_4].map((c, i) => (
-                            <li key={i} className="flex items-center gap-2">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                                {i + 1}
-                              </span>
-                              {c}
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                      {!voted && (
-                        <Button
-                          onClick={() => openVote(r)}
-                          size="sm"
-                          className="w-full mt-2"
-                          style={{ background: "var(--gradient-hero)" }}
-                        >
-                          <Vote className="mr-2 h-3.5 w-3.5" /> Voter
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher (nom, MSISDN, wilaya, région, distributeur…)"
+                    value={filterText}
+                    onChange={(e) => setFilterText(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="voted">Votés</SelectItem>
+                      <SelectItem value="pending">En attente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                {filteredRows.length} résultat{filteredRows.length > 1 ? "s" : ""} sur {allRows.length}
+              </div>
+
+              {filteredRows.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredRows.map((r) => {
+                    const voted = !!r.response;
+                    return (
+                      <Card key={r.msisdn} className="shadow-sm">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base leading-tight">{r.nom_pdv}</CardTitle>
+                            {voted ? (
+                              <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                                <CheckCircle2 className="mr-1 h-3 w-3" /> Voté
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">En attente</Badge>
+                            )}
+                          </div>
+                          <CardDescription className="font-mono text-xs">{r.msisdn}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          <div className="text-muted-foreground">
+                            {r.wilaya} · {r.region}
+                          </div>
+                          <div className="text-xs">
+                            Distributeur actuel : <strong>{r.distributeur_actuel}</strong>
+                          </div>
+                          {voted && r.response && (
+                            <ol className="mt-2 space-y-1 rounded-md bg-muted p-2 text-xs">
+                              {[r.response.choix_1, r.response.choix_2, r.response.choix_3, r.response.choix_4].map((c, i) => (
+                                <li key={i} className="flex items-center gap-2">
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                    {i + 1}
+                                  </span>
+                                  {c}
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                          {!voted && (
+                            <Button
+                              onClick={() => openVote(r)}
+                              size="sm"
+                              className="w-full mt-2"
+                              style={{ background: "var(--gradient-hero)" }}
+                            >
+                              <Vote className="mr-2 h-3.5 w-3.5" /> Voter
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-10 text-center text-muted-foreground">
+                    Aucun résultat ne correspond aux filtres sélectionnés.
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </main>
       )}
