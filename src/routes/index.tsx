@@ -3,122 +3,129 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Phone, CheckCircle2, ShieldCheck, LockKeyhole, KeyRound } from "lucide-react";
+import { Loader2, User, KeyRound, LockKeyhole, LogOut, CheckCircle2, Vote, ShieldCheck } from "lucide-react";
 
-import { checkMsisdn, submitResponse, getPublicCounter } from "@/lib/survey.functions";
-import { DISTRIBUTEURS, isValidMsisdn } from "@/lib/survey-constants";
+import {
+  supervisorLogin,
+  supervisorLogout,
+  supervisorMe,
+  supervisorListMsisdns,
+  supervisorSubmitFor,
+} from "@/lib/supervisor.functions";
+import { getPublicCounter } from "@/lib/survey.functions";
+import { DISTRIBUTEURS } from "@/lib/survey-constants";
 import { OoredooLogo } from "@/components/OoredooLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Ooredoo — Classement des distributeurs" },
-      { name: "description", content: "Co-distributeurs Ooredoo Algérie : classez vos distributeurs préférés." },
+      { title: "Ooredoo — Espace Superviseur" },
+      { name: "description", content: "Connexion superviseur pour gérer les votes des PDV Ooredoo." },
     ],
   }),
-  component: SurveyPage,
+  component: SupervisorPage,
 });
 
-type Participant = {
+type PdvRow = {
   msisdn: string;
   nom_pdv: string;
   wilaya: string;
   region: string;
   distributeur_actuel: string;
+  response: {
+    msisdn: string;
+    choix_1: string;
+    choix_2: string;
+    choix_3: string;
+    choix_4: string;
+    created_at: string;
+  } | null;
 };
 
-function SurveyPage() {
-  const checkFn = useServerFn(checkMsisdn);
-  const submitFn = useServerFn(submitResponse);
+function SupervisorPage() {
+  const loginFn = useServerFn(supervisorLogin);
+  const logoutFn = useServerFn(supervisorLogout);
+  const meFn = useServerFn(supervisorMe);
+  const listFn = useServerFn(supervisorListMsisdns);
+  const submitFn = useServerFn(supervisorSubmitFor);
   const counterFn = useServerFn(getPublicCounter);
 
+  const me = useQuery({ queryKey: ["supervisor-me"], queryFn: () => meFn() });
+  const list = useQuery({
+    queryKey: ["supervisor-list"],
+    queryFn: () => listFn(),
+    enabled: !!me.data?.username,
+  });
   const counter = useQuery({
     queryKey: ["public-counter"],
     queryFn: () => counterFn(),
     refetchInterval: 30000,
   });
 
-  const [step, setStep] = useState<"msisdn" | "ranking" | "done" | "already">("msisdn");
-  const [msisdn, setMsisdn] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [participant, setParticipant] = useState<Participant | null>(null);
-  const [previousChoices, setPreviousChoices] = useState<string[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [active, setActive] = useState<PdvRow | null>(null);
   const [choices, setChoices] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const progress = step === "msisdn" ? 25 : step === "ranking" ? 65 : 100;
-
-  const handleCheck = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidMsisdn(msisdn)) {
-      toast.error("Format invalide", { description: "Saisissez un MSISDN valide (ex : 0550123456)." });
-      return;
-    }
-    setChecking(true);
+    setLoading(true);
     try {
-      const res = await checkFn({ data: { msisdn, password } });
-      if (res.status === "not_authorized") {
-        toast.error("Votre numéro n'est pas autorisé à participer.");
-      } else if (res.status === "invalid_password") {
-        toast.error("Mot de passe incorrect.");
-      } else if (res.status === "already_voted") {
-        if (res.participant) setParticipant(res.participant);
-        if (res.response) {
-          setPreviousChoices([res.response.choix_1, res.response.choix_2, res.response.choix_3, res.response.choix_4]);
-        }
-        setStep("already");
-      } else if (res.participant) {
-        setParticipant(res.participant);
-        setStep("ranking");
-      }
+      await loginFn({ data: { username, password } });
+      setPassword("");
+      await me.refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erreur");
+      toast.error(err instanceof Error ? err.message : "Erreur de connexion");
     } finally {
-      setChecking(false);
+      setLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await logoutFn();
+    setUsername("");
+    await me.refetch();
+  };
+
+  const openVote = (row: PdvRow) => {
+    setActive(row);
+    setChoices([undefined, undefined, undefined, undefined]);
   };
 
   const usedSet = new Set(choices.filter(Boolean) as string[]);
-  const duplicates =
-    choices.every(Boolean) && new Set(choices as string[]).size !== 4;
-
-  const askConfirm = () => {
-    if (!choices.every(Boolean)) {
-      toast.error("Veuillez sélectionner les 4 distributeurs.");
-      return;
-    }
-    if (duplicates) {
-      toast.error("Chaque distributeur doit être sélectionné une seule fois.");
-      return;
-    }
-    setConfirmOpen(true);
-  };
+  const duplicates = choices.every(Boolean) && new Set(choices as string[]).size !== 4;
 
   const doSubmit = async () => {
-    if (!participant) return;
+    if (!active) return;
+    if (!choices.every(Boolean) || duplicates) {
+      toast.error("Veuillez sélectionner les 4 distributeurs (sans doublon).");
+      return;
+    }
     setSubmitting(true);
     try {
       await submitFn({
         data: {
-          msisdn: participant.msisdn,
+          msisdn: active.msisdn,
           choix_1: choices[0] as (typeof DISTRIBUTEURS)[number],
           choix_2: choices[1] as (typeof DISTRIBUTEURS)[number],
           choix_3: choices[2] as (typeof DISTRIBUTEURS)[number],
           choix_4: choices[3] as (typeof DISTRIBUTEURS)[number],
         },
       });
-      setStep("done");
-      setConfirmOpen(false);
+      toast.success("Classement enregistré.");
+      setActive(null);
+      await list.refetch();
       counter.refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur");
@@ -127,300 +134,255 @@ function SurveyPage() {
     }
   };
 
+  const loggedIn = !!me.data?.username;
+
   return (
     <div className="min-h-screen">
       <Toaster richColors position="top-center" />
 
-      {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <OoredooLogo />
-          <Link
-            to="/admin/login"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            <LockKeyhole className="h-3.5 w-3.5" />
-            Espace Admin
-          </Link>
+          <div className="flex items-center gap-3">
+            {loggedIn ? (
+              <>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  Connecté : <strong>{me.data?.username}</strong>
+                </span>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-3.5 w-3.5" /> Déconnexion
+                </Button>
+              </>
+            ) : (
+              <Link
+                to="/admin/login"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <LockKeyhole className="h-3.5 w-3.5" />
+                Espace Admin
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden text-primary-foreground"
-        style={{ background: "var(--gradient-hero)" }}
-      >
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 0, transparent 40%)" }} />
-        <div className="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
-          <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            Classement des distributeurs
-          </h1>
-          <p className="mt-3 max-w-2xl text-primary-foreground/90 text-base sm:text-lg">
-            Bienvenue. En tant que co-distributeur Ooredoo, classez vos 4 distributeurs préférés par ordre de préférence.
-          </p>
-
-          {counter.data && (
-            <div className="mt-6 inline-flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
-              <span className="flex items-center gap-2 text-sm">
-                <ShieldCheck className="h-4 w-4" />
-                <strong>{counter.data.votes.toLocaleString("fr-FR")}</strong> participation{counter.data.votes > 1 ? "s" : ""}
-                <span className="text-primary-foreground/70">sur {counter.data.total.toLocaleString("fr-FR")}</span>
-              </span>
-              <span className="text-sm font-medium">
-                {counter.data.total > 0
-                  ? `${Math.round((counter.data.votes / counter.data.total) * 1000) / 10}%`
-                  : "0%"}
-              </span>
+      {!loggedIn && (
+        <>
+          <section className="relative overflow-hidden text-primary-foreground" style={{ background: "var(--gradient-hero)" }}>
+            <div className="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
+              <h1 className="text-3xl sm:text-4xl font-bold leading-tight">Espace Superviseur</h1>
+              <p className="mt-3 max-w-2xl text-primary-foreground/90 text-base sm:text-lg">
+                Connectez-vous pour gérer les votes des PDV qui vous sont assignés.
+              </p>
+              {counter.data && (
+                <div className="mt-6 inline-flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+                  <span className="flex items-center gap-2 text-sm">
+                    <ShieldCheck className="h-4 w-4" />
+                    <strong>{counter.data.votes.toLocaleString("fr-FR")}</strong> participations
+                    <span className="text-primary-foreground/70">sur {counter.data.total.toLocaleString("fr-FR")}</span>
+                  </span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
 
-      {/* Progress */}
-      <div className="mx-auto max-w-3xl px-4 pt-8">
-        <div className="mb-1 flex justify-between text-xs font-medium text-muted-foreground">
-          <span>Étape {step === "msisdn" ? 1 : step === "ranking" ? 2 : 3} sur 3</span>
-          <span>{progress}%</span>
-        </div>
-        <Progress value={progress} className="h-2" />
-      </div>
-
-      {/* Main card */}
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        {step === "msisdn" && (
-          <Card className="shadow-[var(--shadow-card)] border-border/60 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <CardHeader>
-              <CardTitle className="text-2xl">Identifiez-vous</CardTitle>
-              <CardDescription>Saisissez votre numéro MSISDN pour commencer.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCheck} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="msisdn">Votre MSISDN</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="msisdn"
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      placeholder="0550123456"
-                      value={msisdn}
-                      onChange={(e) => setMsisdn(e.target.value)}
-                      className="pl-9 h-12 text-base"
-                      maxLength={15}
-                      required
-                    />
-                  </div>
-                  {msisdn.length > 0 && !isValidMsisdn(msisdn) && (
-                    <p className="text-xs text-destructive">Format invalide — exemple : 0550123456.</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="Votre mot de passe"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-9 h-12 text-base"
-                      maxLength={100}
-                      required
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  disabled={checking || !isValidMsisdn(msisdn) || !password}
-                  className="w-full h-12 text-base font-semibold"
-                  style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-elegant)" }}
-                >
-                  {checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Continuer
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {step === "ranking" && participant && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <Card className="shadow-[var(--shadow-card)] border-border/60">
+          <main className="mx-auto max-w-md px-4 py-10">
+            <Card className="shadow-[var(--shadow-card)]">
               <CardHeader>
-                <CardTitle className="text-lg">Vos informations</CardTitle>
-                <CardDescription>Informations récupérées automatiquement.</CardDescription>
+                <CardTitle className="text-2xl">Connexion superviseur</CardTitle>
+                <CardDescription>Utilisez votre identifiant et mot de passe.</CardDescription>
               </CardHeader>
               <CardContent>
-                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Info label="MSISDN" value={participant.msisdn} />
-                  <Info label="Nom du PDV" value={participant.nom_pdv} />
-                  <Info label="Wilaya" value={participant.wilaya} />
-                  <Info label="Région" value={participant.region} />
-                  <Info label="Distributeur actuel" value={participant.distributeur_actuel} full />
-                </dl>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-[var(--shadow-card)] border-border/60">
-              <CardHeader>
-                <CardTitle className="text-xl">Votre classement</CardTitle>
-                <CardDescription>
-                  Classez les 4 distributeurs par ordre de préférence. Chacun ne peut être choisi qu'une seule fois.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="space-y-1.5">
-                    <Label className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                        {i + 1}
-                      </span>
-                      Choix {i + 1}
-                    </Label>
-                    <Select
-                      value={choices[i]}
-                      onValueChange={(v) => {
-                        const next = [...choices];
-                        next[i] = v;
-                        setChoices(next);
-                      }}
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Sélectionnez un distributeur" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DISTRIBUTEURS.map((d) => {
-                          const taken = usedSet.has(d) && choices[i] !== d;
-                          return (
-                            <SelectItem key={d} value={d} disabled={taken}>
-                              {d} {taken && <span className="ml-1 text-xs text-muted-foreground">(déjà choisi)</span>}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="user">Identifiant</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="user"
+                        autoComplete="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="pl-9 h-11"
+                        required
+                      />
+                    </div>
                   </div>
-                ))}
-
-                {duplicates && (
-                  <p className="text-sm text-destructive">
-                    Chaque distributeur doit être sélectionné une seule fois.
-                  </p>
-                )}
-
-                <Button
-                  type="button"
-                  onClick={askConfirm}
-                  disabled={!choices.every(Boolean) || duplicates}
-                  className="w-full h-12 text-base font-semibold mt-2"
-                  style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-elegant)" }}
-                >
-                  Valider mon classement
-                </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="pwd">Mot de passe</Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="pwd"
+                        type="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-9 h-11"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={loading || !username || !password}
+                    className="w-full h-11 font-semibold"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Se connecter
+                  </Button>
+                </form>
               </CardContent>
             </Card>
+          </main>
+        </>
+      )}
+
+      {loggedIn && (
+        <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold">Mes PDV</h1>
+            <p className="text-sm text-muted-foreground">
+              Liste des MSISDN qui vous sont assignés. Cliquez sur « Voter » pour enregistrer un classement.
+            </p>
           </div>
-        )}
 
-        {step === "done" && (
-          <Card className="shadow-[var(--shadow-card)] border-border/60 text-center animate-in fade-in zoom-in-95 duration-500">
-            <CardContent className="py-12">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle2 className="h-9 w-9 text-success" />
-              </div>
-              <h2 className="text-2xl font-bold">Merci pour votre participation.</h2>
-              <p className="mt-2 text-muted-foreground">Votre classement a été enregistré avec succès.</p>
-            </CardContent>
-          </Card>
-        )}
+          {list.isLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
+            </div>
+          )}
 
-        {step === "already" && (
-          <Card className="shadow-[var(--shadow-card)] border-border/60 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle2 className="h-8 w-8 text-success" />
-              </div>
-              <CardTitle className="text-2xl">Votre classement</CardTitle>
-              <CardDescription>
-                Vous avez déjà participé. Voici les choix que vous avez enregistrés.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {participant && (
-                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Info label="MSISDN" value={participant.msisdn} />
-                  <Info label="Nom du PDV" value={participant.nom_pdv} />
-                  <Info label="Wilaya" value={participant.wilaya} />
-                  <Info label="Région" value={participant.region} />
-                </dl>
-              )}
-              {previousChoices && (
-                <ol className="space-y-2 rounded-lg bg-muted p-4">
-                  {previousChoices.map((c, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                        {i + 1}
-                      </span>
-                      <span className="font-medium">{c}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </main>
+          {list.data && list.data.rows.length === 0 && (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                Aucun PDV ne vous est assigné pour le moment.
+              </CardContent>
+            </Card>
+          )}
 
-      <footer className="mx-auto max-w-5xl px-4 py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Ooredoo Algérie — Sondage interne co-distributeurs.
-      </footer>
+          {list.data && list.data.rows.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(list.data.rows as PdvRow[]).map((r) => {
+                const voted = !!r.response;
+                return (
+                  <Card key={r.msisdn} className="shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base leading-tight">{r.nom_pdv}</CardTitle>
+                        {voted ? (
+                          <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                            <CheckCircle2 className="mr-1 h-3 w-3" /> Voté
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">En attente</Badge>
+                        )}
+                      </div>
+                      <CardDescription className="font-mono text-xs">{r.msisdn}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      <div className="text-muted-foreground">
+                        {r.wilaya} · {r.region}
+                      </div>
+                      <div className="text-xs">
+                        Distributeur actuel : <strong>{r.distributeur_actuel}</strong>
+                      </div>
+                      {voted && r.response && (
+                        <ol className="mt-2 space-y-1 rounded-md bg-muted p-2 text-xs">
+                          {[r.response.choix_1, r.response.choix_2, r.response.choix_3, r.response.choix_4].map((c, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                {i + 1}
+                              </span>
+                              {c}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                      {!voted && (
+                        <Button
+                          onClick={() => openVote(r)}
+                          size="sm"
+                          className="w-full mt-2"
+                          style={{ background: "var(--gradient-hero)" }}
+                        >
+                          <Vote className="mr-2 h-3.5 w-3.5" /> Voter
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </main>
+      )}
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
+      <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Confirmez-vous votre classement ?</DialogTitle>
+            <DialogTitle>Classement pour {active?.nom_pdv}</DialogTitle>
             <DialogDescription>
-              Cette action est définitive. Vous ne pourrez plus modifier vos choix.
+              MSISDN {active?.msisdn} — {active?.wilaya}, {active?.region}
             </DialogDescription>
           </DialogHeader>
-          <ol className="space-y-2 rounded-lg bg-muted p-4">
-            {choices.map((c, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                  {i + 1}
-                </span>
-                <span className="font-medium">{c}</span>
-              </li>
+          <div className="space-y-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="space-y-1.5">
+                <Label className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {i + 1}
+                  </span>
+                  Choix {i + 1}
+                </Label>
+                <Select
+                  value={choices[i]}
+                  onValueChange={(v) => {
+                    const next = [...choices];
+                    next[i] = v;
+                    setChoices(next);
+                  }}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Sélectionnez un distributeur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DISTRIBUTEURS.map((d) => {
+                      const taken = usedSet.has(d) && choices[i] !== d;
+                      return (
+                        <SelectItem key={d} value={d} disabled={taken}>
+                          {d} {taken && <span className="ml-1 text-xs text-muted-foreground">(déjà choisi)</span>}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             ))}
-          </ol>
+            {duplicates && (
+              <p className="text-sm text-destructive">Chaque distributeur doit être sélectionné une seule fois.</p>
+            )}
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={submitting}>
+            <Button variant="outline" onClick={() => setActive(null)} disabled={submitting}>
               Annuler
             </Button>
             <Button
               onClick={doSubmit}
-              disabled={submitting}
+              disabled={submitting || !choices.every(Boolean) || duplicates}
               style={{ background: "var(--gradient-hero)" }}
             >
-              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirmer
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enregistrer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
 
-function Info({ label, value, full }: { label: string; value: string; full?: boolean }) {
-  return (
-    <div className={`rounded-lg border bg-muted/40 px-3 py-2 ${full ? "sm:col-span-2" : ""}`}>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 font-medium text-foreground">{value}</dd>
+      <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} Ooredoo Algérie — Espace superviseur.
+      </footer>
     </div>
   );
 }
