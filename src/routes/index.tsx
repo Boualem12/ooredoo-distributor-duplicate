@@ -74,6 +74,9 @@ function SupervisorPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [filterText, setFilterText] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "voted" | "pending">("all");
+
   const [active, setActive] = useState<PdvRow | null>(null);
   const [choices, setChoices] = useState<(string | undefined)[]>([undefined, undefined, undefined, undefined]);
   const [submitting, setSubmitting] = useState(false);
