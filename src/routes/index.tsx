@@ -36,7 +36,7 @@ export const Route = createFileRoute("/")({
 
 type PdvRow = {
   msisdn: string;
-  nom_pdv: string;
+  nom_cod: string;
   wilaya: string;
   region: string;
   distributeur_actuel: string;
@@ -147,7 +147,7 @@ function SupervisorPage() {
     if (!filterText.trim()) return true;
     const q = filterText.trim().toLowerCase();
     return (
-      r.nom_pdv.toLowerCase().includes(q) ||
+      r.nom_cod.toLowerCase().includes(q) ||
       r.msisdn.toLowerCase().includes(q) ||
       r.wilaya.toLowerCase().includes(q) ||
       r.region.toLowerCase().includes(q) ||
@@ -166,7 +166,11 @@ function SupervisorPage() {
             {loggedIn ? (
               <>
                 <span className="text-xs text-muted-foreground hidden sm:inline">
-                  Connecté : <strong>{me.data?.username}</strong>
+                  Connecté :{" "}
+                  <strong>{me.data?.fullName || me.data?.username}</strong>
+                  {me.data?.fullName ? (
+                    <span className="ml-1 text-muted-foreground/70">({me.data?.username})</span>
+                  ) : null}
                 </span>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="mr-2 h-3.5 w-3.5" /> Déconnexion
@@ -320,7 +324,7 @@ function SupervisorPage() {
                       <Card key={r.msisdn} className="shadow-sm">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-base leading-tight">{r.nom_pdv}</CardTitle>
+                            <CardTitle className="text-base leading-tight">{r.nom_cod}</CardTitle>
                             {voted ? (
                               <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
                                 <CheckCircle2 className="mr-1 h-3 w-3" /> Voté
@@ -380,7 +384,7 @@ function SupervisorPage() {
       <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Classement pour {active?.nom_pdv}</DialogTitle>
+            <DialogTitle>Classement pour {active?.nom_cod}</DialogTitle>
             <DialogDescription>
               MSISDN {active?.msisdn} — {active?.wilaya}, {active?.region}
             </DialogDescription>
