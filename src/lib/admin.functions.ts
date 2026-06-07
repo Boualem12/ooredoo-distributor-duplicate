@@ -100,11 +100,11 @@ export const adminStats = createServerFn({ method: "GET" }).handler(async () => 
 
 const rowSchema = z.object({
   msisdn: z.string().min(1),
-  nom_pdv: z.string().min(1),
+  nom_cod: z.string().min(1),
   wilaya: z.string().min(1),
   region: z.string().min(1),
   distributeur_actuel: z.string().min(1),
-  password: z.string().min(1).max(200),
+  supervisor_name: z.string().min(1).max(200),
   supervisor_username: z.string().min(1).max(100),
   supervisor_password: z.string().min(1).max(200),
 });
@@ -126,20 +126,26 @@ export const adminImport = createServerFn({ method: "POST" })
     const cleaned = data.rows
       .map((r) => ({
         msisdn: normalizeMsisdn(r.msisdn),
-        nom_pdv: r.nom_pdv.trim(),
+        nom_cod: r.nom_cod.trim(),
         wilaya: r.wilaya.trim(),
         region: r.region.trim(),
         distributeur_actuel: r.distributeur_actuel.trim(),
-        password: r.password.trim(),
+        supervisor_name: r.supervisor_name.trim(),
         supervisor_username: r.supervisor_username.trim().toLowerCase(),
         supervisor_password: r.supervisor_password.trim(),
       }))
       .filter((r) => r.msisdn.length >= 8 && r.supervisor_username.length > 0);
 
-    // Upsert supervisors first so the FK on authorized_participants is satisfied.
-    const supMap = new Map<string, string>();
-    for (const r of cleaned) supMap.set(r.supervisor_username, r.supervisor_password);
-    const supRows = Array.from(supMap.entries()).map(([username, password]) => ({ username, password }));
+    // Upsert supervisors (username, password, full_name) first so FK is satisfied.
+    const supMap = new Map<string, { password: string; full_name: string }>();
+    for (const r of cleaned) {
+      supMap.set(r.supervisor_username, { password: r.supervisor_password, full_name: r.supervisor_name });
+    }
+    const supRows = Array.from(supMap.entries()).map(([username, v]) => ({
+      username,
+      password: v.password,
+      full_name: v.full_name,
+    }));
     if (supRows.length) {
       const { error: supErr } = await supabaseAdmin
         .from("supervisors")
@@ -160,11 +166,10 @@ export const adminImport = createServerFn({ method: "POST" })
     for (let i = 0; i < cleaned.length; i += chunkSize) {
       const chunk = cleaned.slice(i, i + chunkSize).map((r) => ({
         msisdn: r.msisdn,
-        nom_pdv: r.nom_pdv,
+        nom_cod: r.nom_cod,
         wilaya: r.wilaya,
         region: r.region,
         distributeur_actuel: r.distributeur_actuel,
-        password: r.password,
         supervisor_username: r.supervisor_username,
       }));
       const { error } = await supabaseAdmin
@@ -189,16 +194,16 @@ export const adminExport = createServerFn({ method: "GET" }).handler(async () =>
   const { data: participants } = msisdns.length
     ? await supabaseAdmin
         .from("authorized_participants")
-        .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel")
+        .select("msisdn, nom_cod, wilaya, region, distributeur_actuel")
         .in("msisdn", msisdns)
-    : { data: [] as Array<{ msisdn: string; nom_pdv: string; wilaya: string; region: string; distributeur_actuel: string }> };
+    : { data: [] as Array<{ msisdn: string; nom_cod: string; wilaya: string; region: string; distributeur_actuel: string }> };
 
-  const partMap = new Map(participants?.map((p) => [p.msisdn, p]) ?? []);
+  const partMap = new Map((participants ?? []).map((p) => [p.msisdn, p]));
   const rows = (responses ?? []).map((r) => {
     const p = partMap.get(r.msisdn);
     return {
       msisdn: r.msisdn,
-      nom_pdv: p?.nom_pdv ?? "",
+      nom_cod: p?.nom_cod ?? "",
       wilaya: p?.wilaya ?? "",
       region: p?.region ?? "",
       distributeur_actuel: p?.distributeur_actuel ?? "",
@@ -223,8 +228,8 @@ export const adminListResponses = createServerFn({ method: "GET" }).handler(asyn
 
   const msisdns = Array.from(new Set((responses ?? []).map((r) => r.msisdn)));
   const { data: participants, error: pErr } = msisdns.length
-    ? await supabaseAdmin.from("authorized_participants").select("msisdn, nom_pdv, wilaya, region, distributeur_actuel").in("msisdn", msisdns)
-    : { data: [], error: null as null };
+    ? await supabaseAdmin.from("authorized_participants").select("msisdn, nom_cod, wilaya, region, distributeur_actuel").in("msisdn", msisdns)
+    : { data: [] as Array<{ msisdn: string; nom_cod: string; wilaya: string; region: string; distributeur_actuel: string }>, error: null as null };
   if (pErr) throw new Error(pErr.message);
 
   const partMap = new Map((participants ?? []).map((p) => [p.msisdn, p]));
@@ -232,7 +237,7 @@ export const adminListResponses = createServerFn({ method: "GET" }).handler(asyn
     const p = partMap.get(r.msisdn);
     return {
       msisdn: r.msisdn,
-      nom_pdv: p?.nom_pdv ?? "",
+      nom_cod: p?.nom_cod ?? "",
       wilaya: p?.wilaya ?? "",
       region: p?.region ?? "",
       distributeur_actuel: p?.distributeur_actuel ?? "",

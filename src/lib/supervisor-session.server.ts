@@ -5,6 +5,7 @@ const sessionPassword = (rawPassword + "ooredoo-supervisor-session-secret-paddin
 
 export interface SupervisorSessionData {
   username?: string;
+  fullName?: string | null;
   loggedAt?: number;
 }
 

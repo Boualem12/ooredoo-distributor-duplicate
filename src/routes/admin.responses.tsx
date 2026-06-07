@@ -43,7 +43,7 @@ function ResponsesPage() {
     return data.rows.filter(
       (r) =>
         r.msisdn.toLowerCase().includes(s) ||
-        r.nom_pdv.toLowerCase().includes(s) ||
+        r.nom_cod.toLowerCase().includes(s) ||
         r.wilaya.toLowerCase().includes(s) ||
         r.region.toLowerCase().includes(s),
     );
@@ -105,7 +105,7 @@ function ResponsesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>MSISDN</TableHead>
-                  <TableHead>PDV</TableHead>
+                  <TableHead>COD</TableHead>
                   <TableHead>Wilaya</TableHead>
                   <TableHead>Région</TableHead>
                   <TableHead>Distrib. actuel</TableHead>
@@ -128,7 +128,7 @@ function ResponsesPage() {
                   rows.map((r) => (
                     <TableRow key={r.msisdn}>
                       <TableCell className="font-medium whitespace-nowrap">{r.msisdn}</TableCell>
-                      <TableCell>{r.nom_pdv}</TableCell>
+                      <TableCell>{r.nom_cod}</TableCell>
                       <TableCell>{r.wilaya}</TableCell>
                       <TableCell>{r.region}</TableCell>
                       <TableCell>{r.distributeur_actuel}</TableCell>
