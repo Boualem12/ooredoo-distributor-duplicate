@@ -16,7 +16,7 @@ export const supervisorLogin = createServerFn({ method: "POST" })
     const username = data.username.trim().toLowerCase();
     const { data: sup, error } = await supabaseAdmin
       .from("supervisors")
-      .select("username, password")
+      .select("username, password, full_name")
       .eq("username", username)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -24,8 +24,12 @@ export const supervisorLogin = createServerFn({ method: "POST" })
       throw new Error("Identifiants invalides.");
     }
     const session = await getSupervisorSession();
-    await session.update({ username: sup.username, loggedAt: Date.now() });
-    return { ok: true, username: sup.username };
+    await session.update({
+      username: sup.username,
+      fullName: sup.full_name ?? null,
+      loggedAt: Date.now(),
+    });
+    return { ok: true, username: sup.username, fullName: sup.full_name ?? null };
   });
 
 export const supervisorLogout = createServerFn({ method: "POST" }).handler(async () => {
@@ -38,7 +42,17 @@ export const supervisorLogout = createServerFn({ method: "POST" }).handler(async
 export const supervisorMe = createServerFn({ method: "GET" }).handler(async () => {
   const { getSupervisorSession } = await import("./supervisor-session.server");
   const session = await getSupervisorSession();
-  return { username: session.data.username ?? null };
+  if (!session.data.username) {
+    return { username: null, fullName: null };
+  }
+  // Always refresh from DB so a name added later shows up after re-login isn't required.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: sup } = await supabaseAdmin
+    .from("supervisors")
+    .select("full_name")
+    .eq("username", session.data.username)
+    .maybeSingle();
+  return { username: session.data.username, fullName: sup?.full_name ?? session.data.fullName ?? null };
 });
 
 async function requireSupervisor(): Promise<string> {
@@ -54,9 +68,9 @@ export const supervisorListMsisdns = createServerFn({ method: "GET" }).handler(a
 
   const { data: pdvs, error } = await supabaseAdmin
     .from("authorized_participants")
-    .select("msisdn, nom_pdv, wilaya, region, distributeur_actuel")
+    .select("msisdn, nom_cod, wilaya, region, distributeur_actuel")
     .eq("supervisor_username", username)
-    .order("nom_pdv", { ascending: true });
+    .order("nom_cod", { ascending: true });
   if (error) throw new Error(error.message);
 
   const msisdns = (pdvs ?? []).map((p) => p.msisdn);
