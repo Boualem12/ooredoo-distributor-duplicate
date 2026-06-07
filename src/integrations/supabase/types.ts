@@ -19,8 +19,7 @@ export type Database = {
           created_at: string
           distributeur_actuel: string
           msisdn: string
-          nom_pdv: string
-          password: string | null
+          nom_cod: string
           region: string
           supervisor_username: string | null
           wilaya: string
@@ -29,8 +28,7 @@ export type Database = {
           created_at?: string
           distributeur_actuel: string
           msisdn: string
-          nom_pdv: string
-          password?: string | null
+          nom_cod: string
           region: string
           supervisor_username?: string | null
           wilaya: string
@@ -39,8 +37,7 @@ export type Database = {
           created_at?: string
           distributeur_actuel?: string
           msisdn?: string
-          nom_pdv?: string
-          password?: string | null
+          nom_cod?: string
           region?: string
           supervisor_username?: string | null
           wilaya?: string
